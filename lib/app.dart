@@ -1,0 +1,84 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:authentication_repository/authentication_repository.dart';
+import 'package:login_bloc/Authentication/bloc/authentication_bloc.dart';
+import 'package:user_repository/user_repository.dart';
+
+
+import './Login/login.dart';
+import './HomePage/home.dart';
+import './SplashPage/splash.dart';
+
+class App extends StatefulWidget {
+  const App({super.key});
+
+  @override
+  State<App> createState() => _AppState();
+}
+
+class _AppState extends State<App> {
+  late final AuthenticationRepository _authenticationRepository;
+  late final UserRepository _userRepository;
+
+  @override
+  void initState() {
+    _authenticationRepository = AuthenticationRepository();
+    _userRepository = UserRepository();
+
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _authenticationRepository.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepositoryProvider.value(
+      value: _authenticationRepository,
+      child: BlocProvider(
+          create: (context) => AuthenticationBloc(
+              authenticationRepository: _authenticationRepository,
+              userRepository: _userRepository),
+          child: const AppView()),
+    );
+  }
+}
+
+class AppView extends StatefulWidget {
+  const AppView({super.key});
+
+  @override
+  State<AppView> createState() => _AppViewState();
+}
+
+class _AppViewState extends State<AppView> {
+  final _navigatorkey = GlobalKey<NavigatorState>();
+  NavigatorState get _navigatorState => _navigatorkey.currentState!;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      navigatorKey: _navigatorkey,
+      builder: (context, child) {
+        return BlocListener<AuthenticationBloc, AuthenticationState>(
+            listener: (context, state) {
+              switch (state.status) {
+                case AuthenticationStatus.unAuthenticated:
+                  _navigatorState.pushAndRemoveUntil<void>(LoginPage.route(), (route) => false);
+                case AuthenticationStatus.authenticated:
+                  _navigatorState.pushAndRemoveUntil<void>(HomePage.route(), (route) => false);
+                case AuthenticationStatus.unKnown:
+                  break;   
+              }
+            },
+            child: child,
+            );
+      },
+      onGenerateRoute: (_) => SplashPage.route(),
+    );
+  }
+}
